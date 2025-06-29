@@ -16,7 +16,7 @@ func GetUsuarios(c *fiber.Ctx) error {
     if err != nil {
         return c.Status(500).JSON(fiber.Map{"error": "No se pudieron obtener usuarios"})
     }
-    defer rows.Close()
+    defer rows.Close() 
 
     var usuarios []models.Usuario
     for rows.Next() {
