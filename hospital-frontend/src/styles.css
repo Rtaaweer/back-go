@@ -1,0 +1,53 @@
+/* You can add global styles to this file, and also import other style files */
+
+html, body {
+    height: 100%;
+    margin: 0;
+    font-family: var(--font-family);
+    background-color: var(--surface-ground);
+}
+
+.auth-form-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: var(--surface-ground);
+}
+
+.p-card {
+    width: 100%;
+    max-width: 400px;
+}
+
+.p-field {
+    margin-bottom: 1rem;
+}
+
+.p-button {
+    width: 100%;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.mt-3 {
+    margin-top: 1rem;
+}
+
+.p-inputtext {
+    width: 100%;
+}
+
+.p-password {
+    width: 100%;
+}
+
+.p-password input {
+    width: 100%;
+}
+
+.p-dropdown {
+    width: 100%;
+}
