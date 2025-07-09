@@ -21,71 +21,7 @@ import { MessageModule } from 'primeng/message';
     CardModule,
     MessageModule
   ],
-  template: `
-    <div class="auth-form-container">
-      <p-card class="p-card">
-        <ng-template pTemplate="header">
-          <div class="text-center">
-            <h1>Iniciar Sesión</h1>
-            <p>Sistema Hospitalario</p>
-          </div>
-        </ng-template>
-        
-        <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-          <div class="p-field">
-            <label for="email">Correo Electrónico</label>
-            <input 
-              pInputText 
-              id="email" 
-              formControlName="email" 
-              placeholder="ejemplo@hospital.com"
-              class="p-inputtext"
-              [class.ng-invalid]="loginForm.get('email')?.invalid && loginForm.get('email')?.touched"
-            />
-            <small 
-              class="p-error" 
-              *ngIf="loginForm.get('email')?.invalid && loginForm.get('email')?.touched"
-            >
-              El correo electrónico es requerido y debe ser válido
-            </small>
-          </div>
-          
-          <div class="p-field">
-            <label for="password">Contraseña</label>
-            <p-password 
-              formControlName="password" 
-              placeholder="Ingresa tu contraseña"
-              [toggleMask]="true"
-              [feedback]="false"
-              class="p-password"
-            ></p-password>
-            <small 
-              class="p-error" 
-              *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched"
-            >
-              La contraseña es requerida
-            </small>
-          </div>
-          
-          <div class="p-field">
-            <p-button 
-              label="Iniciar Sesión" 
-              type="submit" 
-              [disabled]="loginForm.invalid"
-              class="p-button"
-              [loading]="isLoading"
-            ></p-button>
-          </div>
-        </form>
-        
-        <ng-template pTemplate="footer">
-          <div class="text-center mt-3">
-            <p>¿No tienes cuenta? <a href="#" (click)="goToRegister($event)">Regístrate aquí</a></p>
-          </div>
-        </ng-template>
-      </p-card>
-    </div>
-  `,
+  templateUrl: './login.component.html',  // ← Cambio aquí: de 'template' a 'templateUrl'
   styles: []
 })
 export class LoginComponent {
@@ -98,28 +34,28 @@ export class LoginComponent {
   ) {
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
-      password: ['', [Validators.required, Validators.minLength(6)]]
+      password: ['', [Validators.required]]
     });
   }
 
   onSubmit() {
     if (this.loginForm.valid) {
       this.isLoading = true;
+      // Aquí iría la lógica de autenticación
+      console.log('Datos del formulario:', this.loginForm.value);
       
+      // Simulación de login
       setTimeout(() => {
-        console.log('Login simulado:', this.loginForm.value);
-        alert('Login exitoso! (Simulación)');
         this.isLoading = false;
-      }, 1500);
-    } else {
-      Object.keys(this.loginForm.controls).forEach(key => {
-        this.loginForm.get(key)?.markAsTouched();
-      });
+        // Redirigir al dashboard o página principal
+        // this.router.navigate(['/dashboard']);
+      }, 2000);
     }
   }
 
   goToRegister(event: Event) {
     event.preventDefault();
-    this.router.navigate(['/register']);
+    // this.router.navigate(['/auth/register']);
+    console.log('Navegar a registro');
   }
 }
