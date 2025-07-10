@@ -1,0 +1,131 @@
+<div class="horarios-container">
+  <div class="header">
+    <h2>Gestión de Horarios</h2>
+    <button class="btn btn-primary" (click)="openCreateForm()">
+      <i class="fas fa-plus"></i> Nuevo Horario
+    </button>
+  </div>
+
+  <div *ngIf="loading" class="loading">
+    <i class="fas fa-spinner fa-spin"></i> Cargando...
+  </div>
+
+  <div *ngIf="!loading" class="table-container">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Consultorio</th>
+          <th>Médico</th>
+          <th>Turno</th>
+          <th>Consulta ID</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let horario of horarios">
+          <td>{{ horario.id_horario }}</td>
+          <td>{{ getConsultorioNombre(horario.consultorio_id) }}</td>
+          <td>{{ getMedicoNombre(horario.medico_id) }}</td>
+          <td>
+            <span class="badge" [ngClass]="'badge-' + horario.turno">
+              {{ horario.turno }}
+            </span>
+          </td>
+          <td>{{ horario.consulta_id || 'N/A' }}</td>
+          <td>
+            <button class="btn btn-sm btn-secondary" (click)="openEditForm(horario)">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn btn-sm btn-danger" (click)="deleteHorario(horario.id_horario!)">
+              <i class="fas fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div *ngIf="showForm" class="modal-overlay" (click)="closeForm()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ editingHorario ? 'Editar Horario' : 'Nuevo Horario' }}</h3>
+        <button class="btn-close" (click)="closeForm()">&times;</button>
+      </div>
+      
+      <form [formGroup]="horarioForm" (ngSubmit)="onSubmit()">
+        <div class="form-group">
+          <label for="consultorio_id">Consultorio *</label>
+          <select 
+            id="consultorio_id" 
+            formControlName="consultorio_id" 
+            class="form-control"
+            [class.is-invalid]="horarioForm.get('consultorio_id')?.invalid && horarioForm.get('consultorio_id')?.touched"
+          >
+            <option value="">Seleccione un consultorio</option>
+            <option *ngFor="let consultorio of consultorios" [value]="consultorio.id_consultorio">
+              {{ consultorio.nombre }}
+            </option>
+          </select>
+          <div *ngIf="horarioForm.get('consultorio_id')?.invalid && horarioForm.get('consultorio_id')?.touched" class="invalid-feedback">
+            Seleccione un consultorio
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="medico_id">Médico *</label>
+          <select 
+            id="medico_id" 
+            formControlName="medico_id" 
+            class="form-control"
+            [class.is-invalid]="horarioForm.get('medico_id')?.invalid && horarioForm.get('medico_id')?.touched"
+          >
+            <option value="">Seleccione un médico</option>
+            <option *ngFor="let medico of medicos" [value]="medico.id_usuario">
+              {{ medico.nombre }}
+            </option>
+          </select>
+          <div *ngIf="horarioForm.get('medico_id')?.invalid && horarioForm.get('medico_id')?.touched" class="invalid-feedback">
+            Seleccione un médico
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="turno">Turno *</label>
+          <select 
+            id="turno" 
+            formControlName="turno" 
+            class="form-control"
+            [class.is-invalid]="horarioForm.get('turno')?.invalid && horarioForm.get('turno')?.touched"
+          >
+            <option value="">Seleccione un turno</option>
+            <option value="mañana">Mañana</option>
+            <option value="tarde">Tarde</option>
+            <option value="noche">Noche</option>
+          </select>
+          <div *ngIf="horarioForm.get('turno')?.invalid && horarioForm.get('turno')?.touched" class="invalid-feedback">
+            Seleccione un turno
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="consulta_id">ID de Consulta (Opcional)</label>
+          <input 
+            type="number" 
+            id="consulta_id" 
+            formControlName="consulta_id" 
+            class="form-control"
+            placeholder="ID de consulta asociada"
+          >
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" (click)="closeForm()">Cancelar</button>
+          <button type="submit" class="btn btn-primary" [disabled]="horarioForm.invalid">
+            {{ editingHorario ? 'Actualizar' : 'Crear' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

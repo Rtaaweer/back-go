@@ -1,0 +1,170 @@
+<div class="recetas-container">
+  <div class="header">
+    <h1>Gestión de Recetas</h1>
+    <button class="btn btn-primary" (click)="openModal()">
+      <i class="fas fa-plus"></i> Nueva Receta
+    </button>
+  </div>
+
+  <div *ngIf="error" class="alert alert-danger">
+    {{ error }}
+  </div>
+
+  <div *ngIf="loading" class="loading">
+    Cargando...
+  </div>
+
+  <div class="table-container" *ngIf="!loading">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Fecha</th>
+          <th>Médico ID</th>
+          <th>Paciente ID</th>
+          <th>Consultorio ID</th>
+          <th>Medicamento</th>
+          <th>Dosis</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let receta of recetas">
+          <td>{{ receta.id_receta }}</td>
+          <td>{{ formatDate(receta.fecha) }}</td>
+          <td>{{ receta.medico_id }}</td>
+          <td>{{ receta.paciente_id }}</td>
+          <td>{{ receta.consultorio_id }}</td>
+          <td>{{ receta.medicamento || 'N/A' }}</td>
+          <td>{{ receta.dosis || 'N/A' }}</td>
+          <td>
+            <button class="btn btn-sm btn-secondary" (click)="openModal(receta)">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn btn-sm btn-danger" (click)="deleteReceta(receta.id_receta!)">
+              <i class="fas fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal" [class.show]="isModalOpen" *ngIf="isModalOpen">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">
+            {{ isEditing ? 'Editar Receta' : 'Nueva Receta' }}
+          </h5>
+          <button type="button" class="btn-close" (click)="closeModal()">
+            <span>&times;</span>
+          </button>
+        </div>
+        <form [formGroup]="recetaForm" (ngSubmit)="onSubmit()">
+          <div class="modal-body">
+            <div *ngIf="error" class="alert alert-danger">
+              {{ error }}
+            </div>
+            
+            <div class="form-group">
+              <label for="fecha">Fecha *</label>
+              <input
+                type="date"
+                id="fecha"
+                class="form-control"
+                formControlName="fecha"
+                [class.is-invalid]="recetaForm.get('fecha')?.invalid && recetaForm.get('fecha')?.touched"
+              >
+              <div class="invalid-feedback" *ngIf="recetaForm.get('fecha')?.invalid && recetaForm.get('fecha')?.touched">
+                La fecha es requerida
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group col-md-4">
+                <label for="medico_id">ID Médico *</label>
+                <input
+                  type="number"
+                  id="medico_id"
+                  class="form-control"
+                  formControlName="medico_id"
+                  [class.is-invalid]="recetaForm.get('medico_id')?.invalid && recetaForm.get('medico_id')?.touched"
+                >
+                <div class="invalid-feedback" *ngIf="recetaForm.get('medico_id')?.invalid && recetaForm.get('medico_id')?.touched">
+                  ID del médico es requerido
+                </div>
+              </div>
+
+              <div class="form-group col-md-4">
+                <label for="paciente_id">ID Paciente *</label>
+                <input
+                  type="number"
+                  id="paciente_id"
+                  class="form-control"
+                  formControlName="paciente_id"
+                  [class.is-invalid]="recetaForm.get('paciente_id')?.invalid && recetaForm.get('paciente_id')?.touched"
+                >
+                <div class="invalid-feedback" *ngIf="recetaForm.get('paciente_id')?.invalid && recetaForm.get('paciente_id')?.touched">
+                  ID del paciente es requerido
+                </div>
+              </div>
+
+              <div class="form-group col-md-4">
+                <label for="consultorio_id">ID Consultorio *</label>
+                <input
+                  type="number"
+                  id="consultorio_id"
+                  class="form-control"
+                  formControlName="consultorio_id"
+                  [class.is-invalid]="recetaForm.get('consultorio_id')?.invalid && recetaForm.get('consultorio_id')?.touched"
+                >
+                <div class="invalid-feedback" *ngIf="recetaForm.get('consultorio_id')?.invalid && recetaForm.get('consultorio_id')?.touched">
+                  ID del consultorio es requerido
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="medicamento">Medicamento *</label>
+              <input
+                type="text"
+                id="medicamento"
+                class="form-control"
+                formControlName="medicamento"
+                [class.is-invalid]="recetaForm.get('medicamento')?.invalid && recetaForm.get('medicamento')?.touched"
+              >
+              <div class="invalid-feedback" *ngIf="recetaForm.get('medicamento')?.invalid && recetaForm.get('medicamento')?.touched">
+                El medicamento es requerido (mínimo 3 caracteres)
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="dosis">Dosis *</label>
+              <input
+                type="text"
+                id="dosis"
+                class="form-control"
+                formControlName="dosis"
+                placeholder="Ej: 500mg cada 8 horas"
+                [class.is-invalid]="recetaForm.get('dosis')?.invalid && recetaForm.get('dosis')?.touched"
+              >
+              <div class="invalid-feedback" *ngIf="recetaForm.get('dosis')?.invalid && recetaForm.get('dosis')?.touched">
+                La dosis es requerida (mínimo 2 caracteres)
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" (click)="closeModal()">
+              Cancelar
+            </button>
+            <button type="submit" class="btn btn-primary" [disabled]="recetaForm.invalid || loading">
+              {{ isEditing ? 'Actualizar' : 'Crear' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

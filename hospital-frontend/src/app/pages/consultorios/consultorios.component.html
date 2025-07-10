@@ -1,0 +1,107 @@
+<div class="consultorios-container">
+  <div class="header">
+    <h2>Gestión de Consultorios</h2>
+    <button class="btn btn-primary" (click)="openCreateForm()">
+      <i class="fas fa-plus"></i> Nuevo Consultorio
+    </button>
+  </div>
+
+  <div *ngIf="loading" class="loading">
+    <i class="fas fa-spinner fa-spin"></i> Cargando...
+  </div>
+
+  <div *ngIf="!loading" class="table-container">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Nombre</th>
+          <th>Ubicación</th>
+          <th>Capacidad</th>
+          <th>Equipamiento</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let consultorio of consultorios">
+          <td>{{ consultorio.id_consultorio }}</td>
+          <td>{{ consultorio.nombre }}</td>
+          <td>{{ consultorio.ubicacion || 'N/A' }}</td>
+          <td>{{ consultorio.capacidad || 'N/A' }}</td>
+          <td>{{ consultorio.equipamiento || 'N/A' }}</td>
+          <td>
+            <button class="btn btn-sm btn-secondary" (click)="openEditForm(consultorio)">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn btn-sm btn-danger" (click)="deleteConsultorio(consultorio.id_consultorio!)">
+              <i class="fas fa-trash"></i>
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div *ngIf="showForm" class="modal-overlay" (click)="closeForm()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>{{ editingConsultorio ? 'Editar Consultorio' : 'Nuevo Consultorio' }}</h3>
+        <button class="btn-close" (click)="closeForm()">&times;</button>
+      </div>
+      
+      <form [formGroup]="consultorioForm" (ngSubmit)="onSubmit()">
+        <div class="form-group">
+          <label for="nombre">Nombre *</label>
+          <input 
+            type="text" 
+            id="nombre" 
+            formControlName="nombre" 
+            class="form-control"
+            [class.is-invalid]="consultorioForm.get('nombre')?.invalid && consultorioForm.get('nombre')?.touched"
+          >
+          <div *ngIf="consultorioForm.get('nombre')?.invalid && consultorioForm.get('nombre')?.touched" class="invalid-feedback">
+            El nombre es requerido
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="ubicacion">Ubicación</label>
+          <input 
+            type="text" 
+            id="ubicacion" 
+            formControlName="ubicacion" 
+            class="form-control"
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="capacidad">Capacidad</label>
+          <input 
+            type="number" 
+            id="capacidad" 
+            formControlName="capacidad" 
+            class="form-control"
+            min="1"
+          >
+        </div>
+
+        <div class="form-group">
+          <label for="equipamiento">Equipamiento</label>
+          <textarea 
+            id="equipamiento" 
+            formControlName="equipamiento" 
+            class="form-control"
+            rows="3"
+          ></textarea>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" (click)="closeForm()">Cancelar</button>
+          <button type="submit" class="btn btn-primary" [disabled]="consultorioForm.invalid">
+            {{ editingConsultorio ? 'Actualizar' : 'Crear' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

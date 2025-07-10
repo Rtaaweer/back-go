@@ -1,4 +1,5 @@
 <div class="auth-form-container">
+  <p-toast></p-toast>
   <p-card class="p-card">
     <ng-template pTemplate="header">
       <div class="text-center">
@@ -40,6 +41,29 @@
           *ngIf="loginForm.get('password')?.invalid && loginForm.get('password')?.touched"
         >
           La contraseña es requerida
+        </small>
+      </div>
+      
+      <!-- Campo MFA siempre visible -->
+      <div class="p-field">
+        <label for="totp_code">Código MFA (Opcional)</label>
+        <input 
+          pInputText 
+          id="totp_code" 
+          formControlName="totp_code" 
+          placeholder="Ingresa el código de 6 dígitos"
+          class="p-inputtext"
+          maxlength="6"
+          [class.ng-invalid]="loginForm.get('totp_code')?.invalid && loginForm.get('totp_code')?.touched"
+        />
+        <small class="p-help">
+          Si tu cuenta tiene MFA habilitado, ingresa el código de tu aplicación de autenticación
+        </small>
+        <small 
+          class="p-error" 
+          *ngIf="loginForm.get('totp_code')?.invalid && loginForm.get('totp_code')?.touched"
+        >
+          El código MFA es requerido para esta cuenta
         </small>
       </div>
       
