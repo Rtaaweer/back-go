@@ -11,28 +11,61 @@ func GetConsultas(c *fiber.Ctx) error {
 	db := config.GetDB()
 
 	rows, err := db.Query(`
-        SELECT id_consulta, consultorio_id, medico_id, paciente_id, 
-               tipo, horario, diagnostico, costo 
-        FROM Consultas`)
+        SELECT c.id_consulta, c.consultorio_id, c.medico_id, c.paciente_id, 
+               c.tipo, c.horario, c.diagnostico, c.costo,
+               m.nombre as medico_nombre,
+               p.nombre as paciente_nombre,
+               con.nombre as consultorio_nombre
+        FROM Consultas c
+        LEFT JOIN Usuarios m ON c.medico_id = m.id_usuario AND m.tipo = 'medico'
+        LEFT JOIN Usuarios p ON c.paciente_id = p.id_usuario AND p.tipo = 'paciente'
+        LEFT JOIN Consultorios con ON c.consultorio_id = con.id_consultorio`)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Error al obtener consultas"})
 	}
 	defer rows.Close()
 
-	var consultas []models.Consulta
+	var consultas []map[string]interface{}
 	for rows.Next() {
 		var consulta models.Consulta
+		var medicoNombre, pacienteNombre, consultorioNombre *string
+		
 		err := rows.Scan(&consulta.IDConsulta, &consulta.ConsultorioID,
 			&consulta.MedicoID, &consulta.PacienteID,
 			&consulta.Tipo, &consulta.Horario,
-			&consulta.Diagnostico, &consulta.Costo)
+			&consulta.Diagnostico, &consulta.Costo,
+			&medicoNombre, &pacienteNombre, &consultorioNombre)
 		if err != nil {
 			return c.Status(500).JSON(fiber.Map{"error": "Error al escanear consulta"})
 		}
-		consultas = append(consultas, consulta)
+		
+		// Crear un mapa con toda la información
+		consultaCompleta := map[string]interface{}{
+			"id_consulta":       consulta.IDConsulta,
+			"consultorio_id":    consulta.ConsultorioID,
+			"medico_id":         consulta.MedicoID,
+			"paciente_id":       consulta.PacienteID,
+			"tipo":              consulta.Tipo,
+			"horario":           consulta.Horario,
+			"diagnostico":       consulta.Diagnostico,
+			"costo":             consulta.Costo,
+			"medico_nombre":     getValue(medicoNombre),
+			"paciente_nombre":   getValue(pacienteNombre),
+			"consultorio_nombre": getValue(consultorioNombre),
+		}
+		
+		consultas = append(consultas, consultaCompleta)
 	}
 
 	return c.JSON(consultas)
+}
+
+// Función auxiliar para manejar valores nulos
+func getValue(s *string) string {
+	if s == nil {
+		return "N/A"
+	}
+	return *s
 }
 
 func CreateConsulta(c *fiber.Ctx) error {

@@ -5,14 +5,13 @@ import (
 	"fmt"
 	"hospital-system/config"
 	"hospital-system/models"
-
-	// "hospital-system/schemas" <- Eliminar esta línea
 	"hospital-system/utils"
 	"log"
 	"time"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/lib/pq"
+	// Eliminar esta línea: "github.com/pquerna/otp/totp"
 )
 
 // sendValidatedResponse envía una respuesta validada
@@ -122,13 +121,14 @@ func Register(c *fiber.Ctx) error {
 	responseData := fiber.Map{
 		"description": utils.GetCodeDescription(utils.REGISTER_SUCCESS),
 		"message":     "Usuario registrado. Configura Microsoft Authenticator con el código QR o secreto.",
-		"secret_key":  mfaSecret,  // Cambiar de mfa_secret a secret_key
-		"qr_code_url": qrCodeURL,  // Agregar QR code URL
+		"secret_key":  mfaSecret, 
+		"qr_code_url": qrCodeURL, 
 	}
 
 	return sendStandardResponse(c, 201, utils.REGISTER_SUCCESS, responseData)
 }
 
+// Modificar la función Login para manejar usuarios sin MFA
 func Login(c *fiber.Ctx) error {
 	var req models.LoginRequest
 	if err := c.BodyParser(&req); err != nil {
@@ -143,13 +143,15 @@ func Login(c *fiber.Ctx) error {
 
 	db := config.GetDB()
 	var usuario models.Usuario
-	var hashedPassword, mfaSecret string
+	var hashedPassword string
+	var mfaSecret sql.NullString 
 	var backupCodes pq.StringArray
+	var roleID *int
 
 	err := db.QueryRow(`
-		SELECT id_usuario, nombre, email, password, tipo, mfa_enabled, mfa_secret, backup_codes, created_at, updated_at 
+		SELECT id_usuario, nombre, email, password, tipo, role_id, mfa_enabled, mfa_secret, backup_codes, created_at, updated_at 
 		FROM Usuarios WHERE email = $1`, req.Email).Scan(
-		&usuario.IDUsuario, &usuario.Nombre, &usuario.Email, &hashedPassword, &usuario.Tipo,
+		&usuario.IDUsuario, &usuario.Nombre, &usuario.Email, &hashedPassword, &usuario.Tipo, &roleID,
 		&usuario.MFAEnabled, &mfaSecret, &backupCodes, &usuario.CreatedAt, &usuario.UpdatedAt)
 
 	if err != nil {
@@ -174,7 +176,67 @@ func Login(c *fiber.Ctx) error {
 		})
 	}
 
-	// Validar MFA
+	// NUEVO: Si el usuario no tiene MFA configurado, generarlo automáticamente
+	if !usuario.MFAEnabled {
+		// Generar secreto MFA
+		newMFASecret, err := utils.GenerateMFASecret()
+		if err != nil {
+			return sendStandardResponse(c, 500, utils.LOGIN_SERVER_ERROR, fiber.Map{
+				"error":       "Error al generar MFA",
+				"description": "Error interno del servidor",
+			})
+		}
+
+		// Generar códigos de respaldo
+		newBackupCodes, err := utils.GenerateBackupCodes(8)
+		if err != nil {
+			return sendStandardResponse(c, 500, utils.LOGIN_SERVER_ERROR, fiber.Map{
+				"error":       "Error al generar códigos de respaldo",
+				"description": "Error interno del servidor",
+			})
+		}
+
+		// Generar QR Code
+		qrCodeURL, err := utils.GenerateQRCode(usuario.Email, newMFASecret, "Hospital System")
+		if err != nil {
+			return sendStandardResponse(c, 500, utils.LOGIN_SERVER_ERROR, fiber.Map{
+				"error":       "Error al generar código QR",
+				"description": "Error interno del servidor",
+			})
+		}
+
+		// Actualizar usuario con MFA habilitado
+		_, err = db.Exec(`
+			UPDATE Usuarios 
+			SET mfa_enabled = TRUE, mfa_secret = $1, backup_codes = $2, updated_at = CURRENT_TIMESTAMP 
+			WHERE id_usuario = $3`,
+			newMFASecret, pq.Array(newBackupCodes), usuario.IDUsuario)
+
+		if err != nil {
+			return sendStandardResponse(c, 500, utils.LOGIN_SERVER_ERROR, fiber.Map{
+				"error":       "Error al activar MFA",
+				"description": "Error interno del servidor",
+			})
+		}
+
+		// Actualizar el estado local
+		usuario.MFAEnabled = true
+
+		// Respuesta especial para primer login con MFA generado
+		responseData := fiber.Map{
+			"first_login":    true,
+			"mfa_configured": true,
+			"secret_key":     newMFASecret,
+			"qr_code_url":    qrCodeURL,
+			"backup_codes":   newBackupCodes,
+			"message":        "¡Bienvenido! Se ha configurado automáticamente tu autenticación de dos factores.",
+			"instructions":   "1. Guarda estos códigos de respaldo en un lugar seguro\n2. Escanea el código QR con Google Authenticator o Microsoft Authenticator\n3. En futuros logins necesitarás el código de 6 dígitos de tu aplicación",
+			"user":           usuario,
+		}
+		return sendStandardResponse(c, 200, "MFA_AUTO_CONFIGURED", responseData)
+	}
+
+	// Validar MFA para usuarios que ya lo tienen configurado
 	if usuario.MFAEnabled {
 		if req.TOTPCode == "" {
 			responseData := fiber.Map{
@@ -186,7 +248,7 @@ func Login(c *fiber.Ctx) error {
 		}
 
 		validMFA := false
-		if utils.ValidateTOTP(mfaSecret, req.TOTPCode) {
+		if mfaSecret.Valid && utils.ValidateTOTP(mfaSecret.String, req.TOTPCode) {
 			validMFA = true
 		} else {
 			newBackupCodes, isBackupCode := utils.ValidateBackupCode(backupCodes, req.TOTPCode)
@@ -206,9 +268,28 @@ func Login(c *fiber.Ctx) error {
 		}
 	}
 
+	// Cargar permisos y generar tokens (resto del código igual)
+	var permissions []utils.Permission
+	if roleID != nil {
+		permissionRows, err := db.Query(`
+			SELECT p.resource, p.action 
+			FROM permissions p
+			INNER JOIN role_permissions rp ON p.id = rp.permission_id
+			WHERE rp.role_id = $1
+		`, *roleID)
+		if err == nil {
+			defer permissionRows.Close()
+			for permissionRows.Next() {
+				var permission utils.Permission
+				permissionRows.Scan(&permission.Resource, &permission.Action)
+				permissions = append(permissions, permission)
+			}
+		}
+	}
+
 	logLoginAttempt(db, req.Email, clientIP, userAgent, true)
 
-	accessToken, err := utils.GenerateAccessToken(usuario.IDUsuario, usuario.Email, string(usuario.Tipo))
+	accessToken, err := utils.GenerateAccessToken(usuario.IDUsuario, usuario.Email, string(usuario.Tipo), roleID, permissions)
 	if err != nil {
 		return sendStandardResponse(c, 500, utils.LOGIN_TOKEN_ERROR, fiber.Map{
 			"error":       "Error al generar token",
@@ -258,11 +339,12 @@ func RefreshToken(c *fiber.Ctx) error {
 	db := config.GetDB()
 	var usuario models.Usuario
 	var tokenExpiry time.Time
+	var roleID *int
 
 	err := db.QueryRow(`
-		SELECT id_usuario, nombre, email, tipo, token_expiry 
+		SELECT id_usuario, nombre, email, tipo, role_id, token_expiry 
 		FROM Usuarios WHERE refresh_token = $1`, req.RefreshToken).Scan(
-		&usuario.IDUsuario, &usuario.Nombre, &usuario.Email, &usuario.Tipo, &tokenExpiry)
+		&usuario.IDUsuario, &usuario.Nombre, &usuario.Email, &usuario.Tipo, &roleID, &tokenExpiry)
 
 	if err != nil {
 		return c.Status(401).JSON(fiber.Map{"error": "Refresh token inválido"})
@@ -272,7 +354,26 @@ func RefreshToken(c *fiber.Ctx) error {
 		return c.Status(401).JSON(fiber.Map{"error": "Refresh token expirado"})
 	}
 
-	accessToken, err := utils.GenerateAccessToken(usuario.IDUsuario, usuario.Email, string(usuario.Tipo))
+	// Cargar permisos del usuario
+	var permissions []utils.Permission
+	if roleID != nil {
+		permissionRows, err := db.Query(`
+			SELECT p.resource, p.action 
+			FROM permissions p
+			INNER JOIN role_permissions rp ON p.id = rp.permission_id
+			WHERE rp.role_id = $1
+		`, *roleID)
+		if err == nil {
+			defer permissionRows.Close()
+			for permissionRows.Next() {
+				var permission utils.Permission
+				permissionRows.Scan(&permission.Resource, &permission.Action)
+				permissions = append(permissions, permission)
+			}
+		}
+	}
+
+	accessToken, err := utils.GenerateAccessToken(usuario.IDUsuario, usuario.Email, string(usuario.Tipo), roleID, permissions)
 	if err != nil {
 		return c.Status(500).JSON(fiber.Map{"error": "Error al generar token"})
 	}

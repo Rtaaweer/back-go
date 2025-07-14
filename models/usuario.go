@@ -56,10 +56,11 @@ type LoginRequest struct {
 }
 
 type LoginResponse struct {
-	AccessToken  string  `json:"access_token"`
-	RefreshToken string  `json:"refresh_token"`
-	User         Usuario `json:"user"`
-	RequiresMFA  bool    `json:"requires_mfa,omitempty"`
+	AccessToken   string  `json:"access_token"`
+	RefreshToken  string  `json:"refresh_token"`
+	User          Usuario `json:"user"`
+	RequiresMFA   bool    `json:"requires_mfa,omitempty"`
+	NeedsMFASetup bool    `json:"needs_mfa_setup,omitempty"` // Nuevo campo
 }
 
 type RefreshTokenRequest struct {
@@ -93,4 +94,19 @@ type RegisterRequest struct {
 	Password string      `json:"password" validate:"required,min=12"`
 	Tipo     TipoUsuario `json:"tipo" validate:"required"`
 	RoleID   *int        `json:"role_id,omitempty"`
+}
+
+// Nuevo request para crear usuarios por admin
+type CreateUsuarioRequest struct {
+	Nombre   string      `json:"nombre" validate:"required"`
+	Email    string      `json:"email" validate:"required,email"`
+	Password string      `json:"password" validate:"required,min=12"`
+	Tipo     TipoUsuario `json:"tipo" validate:"required"`
+	RoleID   *int        `json:"role_id,omitempty"`
+}
+
+// Nuevo request para setup inicial de MFA
+type InitialMFASetupRequest struct {
+	Secret   string `json:"secret" validate:"required"`
+	TOTPCode string `json:"totp_code" validate:"required"`
 }
