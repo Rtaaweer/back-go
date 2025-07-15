@@ -37,9 +37,9 @@ type Usuario struct {
 	Nombre       string      `json:"nombre"`
 	Email        string      `json:"email"`
 	Password     string      `json:"-"`
-	Tipo         TipoUsuario `json:"tipo"`           // Mantener para compatibilidad
-	RoleID       *int        `json:"role_id"`        // Nuevo campo opcional
-	Role         *Role       `json:"role,omitempty"` // Relación con rol
+	Tipo         TipoUsuario `json:"tipo"`          
+	RoleID       *int        `json:"role_id"`       
+	Role         *Role       `json:"role,omitempty"` 
 	RefreshToken string      `json:"-"`
 	TokenExpiry  *time.Time  `json:"-"`
 	MFAEnabled   bool        `json:"mfa_enabled"`
